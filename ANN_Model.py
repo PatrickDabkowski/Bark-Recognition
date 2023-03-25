@@ -25,23 +25,22 @@ if __name__ == '__main__':
     y = np.array([0 if l == 'cat' else 1 for l in y])
     # cat is 0, dog is 1
     print('X shape: ', X.shape, '\ny shape: ', y.shape)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.85)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.9)
 
     train_data = TensorDataset(torch.Tensor(X_train), torch.Tensor(y_train))
     test_data = TensorDataset(torch.Tensor(X_test), torch.Tensor(y_test))
 
     # Multithread processing
-    train_loader = DataLoader(train_data, shuffle=True, batch_size=5, num_workers=6)
+    train_loader = DataLoader(train_data, shuffle=True, batch_size=10, num_workers=8)
     test_loader = DataLoader(test_data, batch_size=len(test_data.tensors[0]))
-
 
     class ANN(nn.Module):
         def __init__(self, input_size):
             super().__init__()
-            self.input = nn.Linear(in_features=input_size, out_features=2 * input_size).to(device)
-            self.hidden_1 = nn.Linear(in_features=2 * input_size, out_features=4 * input_size).to(device)
-            self.hidden_2 = nn.Linear(in_features=4 * input_size, out_features=4 * input_size).to(device)
-            self.output = nn.Linear(in_features=4 * input_size, out_features=2).to(device)
+            self.input = nn.Linear(in_features=input_size, out_features= 2000).to(device)
+            self.hidden_1 = nn.Linear(in_features= 2000, out_features= 2000).to(device)
+            self.hidden_2 = nn.Linear(in_features= 2000, out_features= 4000).to(device)
+            self.output = nn.Linear(in_features= 4000, out_features=2).to(device)
 
         def forward(self, x):
             x = nn.functional.relu(self.input(x))
@@ -55,21 +54,48 @@ if __name__ == '__main__':
     num_epochs = 200
     train_accuracies, test_accuracies = [], []
 
+
     loss = nn.CrossEntropyLoss()
-    adam = torch.optim.Adam(params=model.parameters(), lr=0.01)
+    adam = torch.optim.RMSprop(params=model.parameters(), lr=0.001)
+
+    best_test_loss = 0
+    patience = 5
+    count = 0
 
     for epoch in range(num_epochs):
 
         # Train set
+        batch = 0
         for X, y in train_loader:
             preds = model(X.to(device))
             pred_labels = torch.argmax(preds, axis=1)
             loss_ = loss(preds, y.long())
-            print('epoch: ', epoch, ' Loss: ', loss_)
+            print('Batch: ', batch, ' Loss: ', loss_)
             adam.zero_grad()
             loss_.backward()
             adam.step()
+            batch += 1
+
         train_accuracies.append(100 * torch.mean((pred_labels == y).float()).item())
+
+        test_preds = []
+        test_labels = []
+        for X, y in test_loader:
+            preds = model(X)
+            pred_labels = torch.argmax(preds, axis=1)
+            test_preds.extend(pred_labels.numpy())
+            test_labels.extend(y.numpy())
+        test_accuracy = 100 * np.mean(np.array(test_preds) == np.array(test_labels))
+        print('epoch: ', epoch, ' Accuracy: ', 100 * torch.mean((pred_labels == y).float()).item())
+
+        if test_accuracy > best_test_loss:
+            best_test_loss = test_accuracy
+            count = 0
+        else:
+            count += 1
+            if count >= patience:
+                print('Early stopping...')
+                break
 
         # Test set
         X, y = next(iter(test_loader))
