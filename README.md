@@ -1,5 +1,5 @@
 # Bark-Recognition
-#Signalprocessing #MachineLearning #Sounds
+#Signalprocessing #MachineLearning #Sounds #Pytorch #M2processor
 
 Sounds processing model for dogs and cats sounds classfication
 
