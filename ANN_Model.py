@@ -14,6 +14,7 @@ print(f"Is MPS (Metal Performance Shader) built? {torch.backends.mps.is_built()}
 print(f"Is MPS available? {torch.backends.mps.is_available()}")
 
 # Set the device
+print('CUDA available:', torch.cuda.is_available())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device} \n")
 
@@ -29,7 +30,8 @@ if __name__ == '__main__':
     train_data = TensorDataset(torch.Tensor(X_train), torch.Tensor(y_train))
     test_data = TensorDataset(torch.Tensor(X_test), torch.Tensor(y_test))
 
-    train_loader = DataLoader(train_data, shuffle=True, batch_size=12)
+    # Multithread processing
+    train_loader = DataLoader(train_data, shuffle=True, batch_size=5, num_workers=6)
     test_loader = DataLoader(test_data, batch_size=len(test_data.tensors[0]))
 
 
@@ -73,6 +75,8 @@ if __name__ == '__main__':
         X, y = next(iter(test_loader))
         pred_labels = torch.argmax(model(X), axis=1)
         test_accuracies.append(100 * torch.mean((pred_labels == y).float()).item())
+
+    torch.save(model.state_dict(), 'ANN_Model_Torch')
 
     fig = plt.figure(tight_layout=True)
     gs = gridspec.GridSpec(nrows=2, ncols=1)
