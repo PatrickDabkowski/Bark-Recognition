@@ -1,7 +1,9 @@
 # Bark-Recognition
 #Signalprocessing #MachineLearning #Sounds #Pytorch #M2processor #GPU
 
-Sounds processing model for dogs and cats sounds classification 
+Sounds processing model for dogs and cats sounds and pictures classification 
+
+Final model will serve video input
 
 solution based on two datasets available online:
 
