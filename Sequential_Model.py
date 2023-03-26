@@ -103,8 +103,8 @@ if __name__ == '__main__':
         pred_labels = torch.argmax(model(X), axis=1)
         test_accuracies.append(100 * torch.mean((pred_labels == y).float()).item())
 
-    torch.save(best_model.state_dict(), 'Sequential_Model_Torch')
     print('Best Accuracy: ', best_accuracy)
+    torch.save(best_model, 'Sequential_Model_Torch')
 
     fig = plt.figure(tight_layout=True)
     gs = gridspec.GridSpec(nrows=2, ncols=1)
