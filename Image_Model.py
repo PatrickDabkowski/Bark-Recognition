@@ -8,11 +8,15 @@ import torch.nn as nn
 import numpy as np
 
 if __name__ == '__main__':
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     transform = transforms.Compose([transforms.Resize((250, 250)), transforms.ToTensor()])
     dataset = datasets.ImageFolder(root='kagglecatsanddogs_5340/PetImages', transform=transform)
 
     train_size = int(0.9 * len(dataset))
     test_size = len(dataset) - train_size
+    print('Train size: ', train_size)
+    print('Test size: ', test_size)
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size= 20, shuffle=True, num_workers= 8)
@@ -21,23 +25,23 @@ if __name__ == '__main__':
     model = nn.Sequential(
         #nn.Conv2d(3, 3, 10, padding='valid'),
         #nn.ReLU(),
-        nn.Conv2d(3, 3, 7, padding='valid'),
-        nn.ReLU(),
-        nn.Dropout(p=0.2),
         nn.Conv2d(3, 3, 5, padding='valid'),
         nn.ReLU(),
-        nn.MaxPool2d(3, stride=2),
+        nn.Dropout(p=0.4),
+        nn.Conv2d(3, 3, 3, padding='valid'),
+        nn.ReLU(),
+        nn.MaxPool2d(4, stride=2),
         #nn.Conv2d(3, 3, 5, padding='valid'),
         #nn.ReLU(),
         nn.Conv2d(3, 3, 3, padding='valid'),
         nn.ReLU(),
         #nn.Conv2d(3, 3, 3, padding='valid'),
         #nn.ReLU(),
-        nn.MaxPool2d(2, stride=2),
+        nn.MaxPool2d(4, stride=2),
         nn.Conv2d(3, 2, 2, stride=2, padding='valid'),
         nn.Dropout(p=0.5),
         nn.Flatten(),
-        nn.Linear(in_features=1682 , out_features=2),
+        nn.Linear(in_features=1682, out_features=2),
         nn.Sigmoid())
 
     print(model)
@@ -46,10 +50,10 @@ if __name__ == '__main__':
     train_accuracies, test_accuracies = [], []
 
     loss = nn.CrossEntropyLoss()
-    adam = torch.optim.RMSprop(params=model.parameters(), lr=0.001)
+    adam = torch.optim.RMSprop(params=model.parameters(), lr=0.01)
 
     best_test_loss = 0
-    patience = 25
+    patience = 10
     count = 0
 
     best_model = model
@@ -59,7 +63,7 @@ if __name__ == '__main__':
         # Train set
         batch = 0
         for X, y in train_loader:
-            preds = model(X)
+            preds = model(X.to(device))
             pred_labels = torch.argmax(preds, axis=1)
             loss_ = loss(preds, y.long())
             print('Batch: ', batch, ' Loss: ', loss_)
