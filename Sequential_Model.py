@@ -87,7 +87,7 @@ if __name__ == '__main__':
         print('epoch: ', epoch, ' Accuracy: ', 100 * torch.mean((pred_labels == y).float()).item())
 
         if test_accuracy > best_accuracy:
-            best_model = model
+            best_model = model.state_dict()
 
         if test_accuracy > best_test_loss:
             best_test_loss = test_accuracy
@@ -104,6 +104,7 @@ if __name__ == '__main__':
         test_accuracies.append(100 * torch.mean((pred_labels == y).float()).item())
 
     torch.save(best_model.state_dict(), 'Sequential_Model_Torch')
+    print('Best Accuracy: ', best_accuracy)
 
     fig = plt.figure(tight_layout=True)
     gs = gridspec.GridSpec(nrows=2, ncols=1)
