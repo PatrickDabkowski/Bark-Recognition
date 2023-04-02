@@ -5,25 +5,34 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-print('ANN Model \n')
-
-print(f"PyTorch version: {torch.__version__}")
-
-# Check PyTorch has access to MPS (Metal Performance Shader, Apple's GPU architecture)
-print(f"Is MPS (Metal Performance Shader) built? {torch.backends.mps.is_built()}")
-print(f"Is MPS available? {torch.backends.mps.is_available()}")
-
-# Set the device
-print('CUDA available:', torch.cuda.is_available())
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device} \n")
-
+import os
 
 if __name__ == '__main__':
+    print('Sequential Model \n')
+
+    print(f"PyTorch version: {torch.__version__}")
+
+    # Check PyTorch has access to MPS (Metal Performance Shader, Apple's GPU architecture)
+    print(f"Is MPS (Metal Performance Shader) built? {torch.backends.mps.is_built()}")
+    print(f"Is MPS available? {torch.backends.mps.is_available()}")
+
+    # Set the device
+    print('CUDA available:', torch.cuda.is_available())
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device} \n")
+
+
     X = np.load('X.npy')
     y = np.load('y.npy')
-    y = np.array([0 if l == 'cat' else 1 for l in y])
-    # cat is 0, dog is 1
+    for i in range(len(y)):
+        if y[i] == 'cat':
+            y[i] = 0
+        elif y[i] == 'dog':
+            y[i] = 1
+        else:
+            y[i] = 2
+    y = np.array(y, dtype=int)
+    # cat is 0, dog is 1, rest is 2
     print('X shape: ', X.shape, '\ny shape: ', y.shape)
     X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8)
 
@@ -31,17 +40,18 @@ if __name__ == '__main__':
     test_data = TensorDataset(torch.Tensor(X_test), torch.Tensor(y_test))
 
     # Multithread processing
-    train_loader = DataLoader(train_data, shuffle=True, batch_size=10, num_workers=8)
-    test_loader = DataLoader(test_data, batch_size=len(test_data.tensors[0]))
+    train_loader = DataLoader(train_data, shuffle=True, batch_size=10, num_workers= os.cpu_count())
+    test_loader = DataLoader(test_data, batch_size=len(test_data.tensors[0]), num_workers= os.cpu_count())
 
     model = nn.Sequential(
         nn.Linear(8800, 4400),
         nn.ReLU(),
+        nn.Dropout(p=0.5),
         nn.Linear(4400, 2200),
         nn.ReLU(),
         nn.Linear(2200, 1100),
         nn.ReLU(),
-        nn.Linear(1100, 2),
+        nn.Linear(1100, 3),
         nn.LogSoftmax(dim=1))
 
     print(model)
@@ -50,10 +60,10 @@ if __name__ == '__main__':
     train_accuracies, test_accuracies = [], []
 
     loss = nn.CrossEntropyLoss()
-    adam = torch.optim.RMSprop(params=model.parameters(), lr=0.001)
+    optim = torch.optim.RMSprop(params=model.parameters(), lr=0.001)
 
     best_test_loss = 0
-    patience = 25
+    patience = 15
     count = 0
 
     best_model = model
@@ -64,14 +74,15 @@ if __name__ == '__main__':
         # Train set
         batch = 0
         for X, y in train_loader:
+            y = torch.squeeze(y)
             preds = model(X.to(device))
             pred_labels = torch.argmax(preds, axis=1)
             loss_ = loss(preds, y.long())
 
             print('Batch: ', batch, ' Loss: ', loss_)
-            adam.zero_grad()
+            optim.zero_grad()
             loss_.backward()
-            adam.step()
+            optim.step()
             batch += 1
 
         train_accuracies.append(100 * torch.mean((pred_labels == y).float()).item())
@@ -88,6 +99,7 @@ if __name__ == '__main__':
 
         if test_accuracy > best_accuracy:
             best_model = model.state_dict()
+            best_accuracy = test_accuracy
 
         if test_accuracy > best_test_loss:
             best_test_loss = test_accuracy
