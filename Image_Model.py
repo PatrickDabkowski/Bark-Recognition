@@ -13,7 +13,7 @@ if __name__ == '__main__':
     print('Cores: ', os.cpu_count())
 
     transform = transforms.Compose([
-        transforms.Resize((200, 200)),
+        transforms.Resize((250, 250)),
         transforms.Grayscale(),
         transforms.ToTensor()])
     dataset = datasets.ImageFolder(root='kagglecatsanddogs_5340/PetImages', transform=transform)
@@ -30,24 +30,24 @@ if __name__ == '__main__':
     model = nn.Sequential(
         #nn.Conv2d(3, 3, 10, padding='valid'),
         #nn.ReLU(),
-        nn.Conv2d(1, 3, 5, padding='valid'),
+        nn.Conv2d(1, 2, 5, padding='valid'),
         nn.ReLU(),
         nn.Dropout(p=0.4),
-        nn.Conv2d(3, 3, 3, padding='valid'),
+        nn.Conv2d(2, 6, 3, padding='valid'),
         nn.ReLU(),
         nn.MaxPool2d(4, stride=2),
         #nn.Conv2d(3, 3, 5, padding='valid'),
         #nn.ReLU(),
-        nn.Conv2d(3, 3, 3, padding='valid'),
+        nn.Conv2d(6, 12, 3, padding='valid'),
         nn.ReLU(),
         #nn.Conv2d(3, 3, 3, padding='valid'),
         #nn.ReLU(),
         nn.MaxPool2d(4, stride=2),
-        nn.Conv2d(3, 2, 2, stride=2, padding='valid'),
+        nn.Conv2d(12, 32, 3, stride=2, padding='valid'),
         nn.Dropout(p=0.5),
         nn.Flatten(),
-        nn.Linear(in_features=1682, out_features=2),
-        nn.Sigmoid())
+        nn.Linear(in_features=1682, out_features=3),
+        nn.Softmax())
 
     print(model)
 
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     train_accuracies, test_accuracies = [], []
 
     loss = nn.CrossEntropyLoss()
-    adam = torch.optim.RMSprop(params=model.parameters(), lr=0.1)
+    adam = torch.optim.RMSprop(params=model.parameters(), lr=0.01)
 
     best_test_loss = 0
     patience = 10
@@ -68,6 +68,7 @@ if __name__ == '__main__':
         # Train set
         batch = 0
         for X, y in train_loader:
+            y = torch.squeeze(y)
             preds = model(X.to(device))
             pred_labels = torch.argmax(preds, axis=1)
             loss_ = loss(preds, y.long())
