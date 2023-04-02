@@ -24,8 +24,8 @@ if __name__ == '__main__':
     print('Test size: ', test_size)
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size= int(train_size/10), shuffle=True, num_workers= os.cpu_count())
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size= int(train_size/10), shuffle=True, num_workers= os.cpu_count())
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size= 20, shuffle=True, num_workers= os.cpu_count())
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size= 20, shuffle=True, num_workers= os.cpu_count())
 
     model = nn.Sequential(
         #nn.Conv2d(3, 3, 10, padding='valid'),
