@@ -12,3 +12,5 @@ https://www.kaggle.com/datasets/mmoreaux/audio-cats-and-dogs
 https://figshare.com/articles/dataset/Dogs_versus_Cats_Audio_Dataset/20219408
 
 https://www.microsoft.com/en-us/download/confirmation.aspx?id=54765
+
+https://www.kaggle.com/datasets/arnaud58/landscape-pictures?select=00000002_%284%29.jpg
