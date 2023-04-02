@@ -24,8 +24,8 @@ if __name__ == '__main__':
     print('Test size: ', test_size)
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size= 50, shuffle=True, num_workers= os.cpu_count())
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size= 50, shuffle=True, num_workers= os.cpu_count())
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size= int(train_size/10), shuffle=True, num_workers= os.cpu_count())
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size= int(train_size/10), shuffle=True, num_workers= os.cpu_count())
 
     model = nn.Sequential(
         #nn.Conv2d(3, 3, 10, padding='valid'),
@@ -107,7 +107,7 @@ if __name__ == '__main__':
         test_accuracies.append(100 * torch.mean((pred_labels == y).float()).item())
 
     print('Best Accuracy: ', best_accuracy)
-    torch.save(best_model, 'Sequential_Model_Torch')
+    torch.save(best_model, 'Image_Model_Torch')
 
     fig = plt.figure(tight_layout=True)
     gs = gridspec.GridSpec(nrows=2, ncols=1)
