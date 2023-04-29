@@ -3,20 +3,23 @@ import torch
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data import random_split
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import torch.nn as nn
 import numpy as np
 
 if __name__ == '__main__':
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+        print('CUDA')
+    else:
+        print('CPU')
+        device = torch.device('cpu')
     print('Cores: ', os.cpu_count())
 
     transform = transforms.Compose([
-        transforms.Resize((250, 250)),
+        transforms.Resize((120, 120)),
         transforms.Grayscale(),
         transforms.ToTensor()])
-    dataset = datasets.ImageFolder(root='kagglecatsanddogs_5340/PetImages', transform=transform)
+    dataset = datasets.ImageFolder(root='Dataset', transform=transform)
 
     train_size = int(0.9 * len(dataset))
     test_size = len(dataset) - train_size
@@ -24,30 +27,33 @@ if __name__ == '__main__':
     print('Test size: ', test_size)
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size= 20, shuffle=True, num_workers= os.cpu_count())
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size= 20, shuffle=True, num_workers= os.cpu_count())
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size= 10, shuffle=True, num_workers= os.cpu_count())
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size= 10, shuffle=True, num_workers= os.cpu_count())
 
     model = nn.Sequential(
-        #nn.Conv2d(3, 3, 10, padding='valid'),
-        #nn.ReLU(),
-        nn.Conv2d(1, 2, 5, padding='valid'),
+        nn.Conv2d(1, 64, 7, padding='valid'),
         nn.ReLU(),
-        nn.Dropout(p=0.4),
-        nn.Conv2d(2, 6, 3, padding='valid'),
+        nn.Conv2d(64, 64, 7, padding='valid'),
         nn.ReLU(),
-        nn.MaxPool2d(4, stride=2),
-        #nn.Conv2d(3, 3, 5, padding='valid'),
-        #nn.ReLU(),
-        nn.Conv2d(6, 12, 3, padding='valid'),
+        nn.MaxPool2d(2, stride=2),
+        nn.Dropout(p=0.2),
+        nn.Conv2d(64, 64, 6, padding='valid'),
         nn.ReLU(),
-        #nn.Conv2d(3, 3, 3, padding='valid'),
-        #nn.ReLU(),
-        nn.MaxPool2d(4, stride=2),
-        nn.Conv2d(12, 32, 3, stride=2, padding='valid'),
+        nn.MaxPool2d(2, stride=2),
+        nn.Dropout(p=0.5),
+        nn.BatchNorm2d(64),
+        nn.Conv2d(64, 96, 4, padding='valid'),
+        nn.ReLU(),
+        nn.Conv2d(96, 128, 3, padding='valid'),
+        nn.ReLU(),
+        nn.Dropout(p=0.5),
+        nn.MaxPool2d(2, stride=2),
+        nn.Conv2d(128, 256, 3, padding='valid'),
+        nn.ReLU(),
         nn.Dropout(p=0.5),
         nn.Flatten(),
-        nn.Linear(in_features=1682, out_features=3),
-        nn.Softmax())
+        nn.Linear(in_features= 12544, out_features=3),
+        nn.Softmax(dim=1))
 
     print(model)
 
@@ -55,10 +61,10 @@ if __name__ == '__main__':
     train_accuracies, test_accuracies = [], []
 
     loss = nn.CrossEntropyLoss()
-    adam = torch.optim.RMSprop(params=model.parameters(), lr=0.01)
+    adam = torch.optim.Adam(params=model.parameters(), lr=0.01)
 
     best_test_loss = 0
-    patience = 10
+    patience = 35
     count = 0
 
     best_model = model
@@ -84,10 +90,10 @@ if __name__ == '__main__':
         for X, y in test_loader:
             preds = model(X)
             preds = preds.squeeze()
-            test_preds.extend((preds > 0.5).np())
-            test_labels.extend(y.np())
-        test_accuracy = 100 * np.mean(np.array(test_preds) == np.array(test_labels))
-        print('epoch: ', epoch, ' Accuracy: ', 100 * torch.mean((pred_labels == y).float()).item())
+            test_preds.extend(preds.flatten() > 0.5)
+            test_labels.extend(y.flatten())
+        test_accuracy = 100 * np.mean(np.array_equal(np.array(test_preds), np.array(test_labels)))
+        print('epoch: ', epoch, ' Accuracy: ', test_accuracy)
 
         if test_accuracy > best_accuracy:
             best_model = model.state_dict()
@@ -105,26 +111,12 @@ if __name__ == '__main__':
         # Test set
         X, y = next(iter(test_loader))
         pred_labels = torch.argmax(model(X), axis=1)
-        test_accuracies.append(100 * torch.mean((pred_labels == y).float()).item())
+        test_accuracy = 100 * np.mean(np.array_equal(np.array(test_preds), np.array(test_labels)))
+        test_accuracies.append(test_accuracy)
 
     print('Best Accuracy: ', best_accuracy)
     torch.save(best_model, 'Image_Model_Torch')
 
-    fig = plt.figure(tight_layout=True)
-    gs = gridspec.GridSpec(nrows=2, ncols=1)
-
-    ax = fig.add_subplot(gs[0, 0])
-    ax.plot(train_accuracies)
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Training accuracy")
-
-    ax = fig.add_subplot(gs[1, 0])
-    ax.plot(test_accuracies)
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Test accuracy")
-
-    fig.align_labels()
-    plt.show()
 
 
 
