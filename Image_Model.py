@@ -16,7 +16,7 @@ if __name__ == '__main__':
     print('Cores: ', os.cpu_count())
 
     transform = transforms.Compose([
-        transforms.Resize((120, 120)),
+        transforms.Resize((250, 250)),
         transforms.Grayscale(),
         transforms.ToTensor()])
     dataset = datasets.ImageFolder(root='Dataset', transform=transform)
@@ -31,28 +31,38 @@ if __name__ == '__main__':
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size= 10, shuffle=True, num_workers= os.cpu_count())
 
     model = nn.Sequential(
-        nn.Conv2d(1, 64, 7, padding='valid'),
+        nn.Conv2d(1, 16, 3, padding='valid'),
         nn.ReLU(),
-        nn.Conv2d(64, 64, 7, padding='valid'),
+        nn.Conv2d(16, 16, 3, padding='valid'),
         nn.ReLU(),
-        nn.MaxPool2d(2, stride=2),
-        nn.Dropout(p=0.2),
-        nn.Conv2d(64, 64, 6, padding='valid'),
+        nn.BatchNorm2d(16),
+        nn.Conv2d(16, 32, 3, padding='valid'),
+        nn.ReLU(),
+        nn.Conv2d(32, 32, 3, padding='valid'),
+        nn.ReLU(),
+        nn.BatchNorm2d(32),
         nn.ReLU(),
         nn.MaxPool2d(2, stride=2),
         nn.Dropout(p=0.5),
+        nn.Conv2d(32, 64, 3, padding='valid'),
+        nn.ReLU(),
+        nn.Conv2d(64, 64, 3, padding='valid'),
+        nn.ReLU(),
         nn.BatchNorm2d(64),
-        nn.Conv2d(64, 96, 4, padding='valid'),
+        nn.Dropout(p=0.5),
+        nn.MaxPool2d(2, stride=2),
+        nn.Conv2d(64, 128, 3, padding='valid'),
         nn.ReLU(),
-        nn.Conv2d(96, 128, 3, padding='valid'),
-        nn.ReLU(),
+        nn.BatchNorm2d(128),
         nn.Dropout(p=0.5),
         nn.MaxPool2d(2, stride=2),
         nn.Conv2d(128, 256, 3, padding='valid'),
         nn.ReLU(),
+        nn.Conv2d(256, 516, 3, padding='valid'),
+        nn.ReLU(),
         nn.Dropout(p=0.5),
         nn.Flatten(),
-        nn.Linear(in_features= 12544, out_features=3),
+        nn.Linear(in_features= 297216, out_features=3),
         nn.Softmax(dim=1))
 
     print(model)
@@ -61,7 +71,7 @@ if __name__ == '__main__':
     train_accuracies, test_accuracies = [], []
 
     loss = nn.CrossEntropyLoss()
-    adam = torch.optim.Adam(params=model.parameters(), lr=0.01)
+    adam = torch.optim.Adam(params=model.parameters(), lr=0.0001)
 
     best_test_loss = 0
     patience = 35
