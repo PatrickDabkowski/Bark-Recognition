@@ -27,8 +27,8 @@ if __name__ == '__main__':
     print('Test size: ', test_size)
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size= 10, shuffle=True, num_workers= os.cpu_count())
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size= 10, shuffle=True, num_workers= os.cpu_count())
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size= 64, shuffle=True, num_workers= os.cpu_count())
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size= 64, shuffle=True, num_workers= os.cpu_count())
 
     model = nn.Sequential(
         nn.Conv2d(1, 16, 3, padding='valid'),
@@ -58,11 +58,15 @@ if __name__ == '__main__':
         nn.MaxPool2d(2, stride=2),
         nn.Conv2d(128, 256, 3, padding='valid'),
         nn.ReLU(),
+        nn.Conv2d(256, 256, 3, padding='valid'),
+        nn.ReLU(),
+        nn.MaxPool2d(2, stride=2),
+        nn.BatchNorm2d(256),
         nn.Conv2d(256, 516, 3, padding='valid'),
         nn.ReLU(),
         nn.Dropout(p=0.5),
         nn.Flatten(),
-        nn.Linear(in_features= 297216, out_features=3),
+        nn.Linear(in_features= 51600, out_features=3),
         nn.Softmax(dim=1))
 
     print(model)
@@ -71,7 +75,7 @@ if __name__ == '__main__':
     train_accuracies, test_accuracies = [], []
 
     loss = nn.CrossEntropyLoss()
-    adam = torch.optim.Adam(params=model.parameters(), lr=0.0001)
+    adam = torch.optim.Adam(params=model.parameters(), lr=0.001)
 
     best_test_loss = 0
     patience = 35
@@ -95,14 +99,17 @@ if __name__ == '__main__':
 
         train_accuracies.append(100 * torch.mean((pred_labels == y).float()).item())
 
-        test_preds = []
-        test_labels = []
-        for X, y in test_loader:
-            preds = model(X)
-            preds = preds.squeeze()
-            test_preds.extend(preds.flatten() > 0.5)
-            test_labels.extend(y.flatten())
-        test_accuracy = 100 * np.mean(np.array_equal(np.array(test_preds), np.array(test_labels)))
+        test_correct = 0
+        test_total = 0
+        with torch.no_grad():
+            for X, y in test_loader:
+                X, y = X.to(device), y.to(device)
+                preds = model(X)
+                pred_labels = torch.argmax(preds, axis=1)
+                test_correct += (pred_labels == y).sum().item()
+                test_total += y.size(0)
+
+        test_accuracy = 100 * test_correct / test_total
         print('epoch: ', epoch, ' Accuracy: ', test_accuracy)
 
         if test_accuracy > best_accuracy:
