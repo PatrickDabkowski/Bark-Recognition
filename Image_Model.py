@@ -121,7 +121,7 @@ if __name__ == '__main__':
         X, y = X.to(device='cuda'), y.to(device='cuda')
         test_preds = torch.argmax(model(X), axis=1)
         test_preds = test_preds.cpu().numpy()  # Skopiowanie tensora na CPU
-        test_accuracy = 100 * np.mean(np.array_equal(test_preds, test_labels.cpu().numpy()))
+        test_accuracy = 100 * np.mean(np.array_equal(test_preds, y.cpu().numpy()))
         test_accuracies.append(test_accuracy)
 
     print('Best Accuracy: ', best_accuracy)
