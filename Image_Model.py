@@ -18,6 +18,9 @@ if __name__ == '__main__':
 
     transform = transforms.Compose([
         transforms.Resize((128, 128)),
+        transforms.RandomVerticalFlip(p=0.3),
+        transforms.ColorJitter(brightness=0.25, contrast=0.2, saturation=0.2, hue=0.01),
+        transforms.GaussianBlur(kernel_size=3),
         transforms.ToTensor()])
     dataset = datasets.ImageFolder(root='/content/drive/My Drive/Dataset', transform=transform)
 
@@ -50,26 +53,22 @@ if __name__ == '__main__':
         nn.ReLU(),
         nn.MaxPool2d(2, stride=2),
         nn.Dropout(p=0.2),
-        nn.Conv2d(256, 512, 3, padding='valid'),
-        nn.BatchNorm2d(512),
-        nn.ReLU(),
-        nn.MaxPool2d(2, stride=2),
         nn.Flatten(),
-        nn.Linear(in_features= 2048, out_features=1024),
+        nn.Linear(in_features= 9216, out_features=4608),
         nn.ReLU(),
-        nn.Linear(in_features= 1024, out_features=3),
-        nn.Softmax(dim=1))
+        nn.Linear(in_features= 4608, out_features=1),
+        nn.Sigmoid())
 
     model = model.to(device)
     print(model)
 
-    num_epochs = 100
+    num_epochs = 200
     train_accuracies, test_accuracies = [], []
 
-    loss = nn.CrossEntropyLoss()
-    adam = torch.optim.Adam(params=model.parameters(), lr=0.01)
+    loss = nn.BCELoss()
+    adam = torch.optim.Adam(params=model.parameters(), lr=0.005)
 
-    patience = 55
+    patience = 20
     count = 0
     best_model = model
     best_accuracy = 0
@@ -80,10 +79,10 @@ if __name__ == '__main__':
         for X, y in train_loader:
           adam.zero_grad()
           X, y = X.to(device='cuda'), y.to(device='cuda')
-          y = torch.squeeze(y)
+          y = y.float()
           preds = model(X)
-          pred_labels = torch.argmax(preds, axis=1)
-          loss_ = loss(preds, y.long())
+          pred_labels = (preds > 0.5).float() 
+          loss_ = loss(preds, y.unsqueeze(1)) 
           print('Batch: ', batch, ' Loss: ', loss_)
           loss_.backward()
           adam.step()
@@ -95,7 +94,7 @@ if __name__ == '__main__':
         X, y = X.to(device='cuda'), y.to(device='cuda')
         test_preds = torch.argmax(model(X), axis=1)
         test_preds = test_preds.cpu().numpy() 
-        test_accuracy = 100 * np.mean(np.array_equal(test_preds, y.cpu().numpy()))
+        test_accuracy = 100 * torch.mean((pred_labels == y).float()).item()
         test_accuracies.append(test_accuracy)
         print('epoch: ', epoch, ' Accuracy: ', test_accuracy)
 
@@ -110,6 +109,4 @@ if __name__ == '__main__':
 
     print('Best Accuracy: ', best_accuracy)
     torch.save(best_model, '/content/drive/My Drive/Sciezka/Do/Folderu/Image_Model_Torch')
-
-
 
