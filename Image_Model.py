@@ -49,13 +49,13 @@ if __name__ == '__main__':
     model = model.to(device)
     print(model)
 
-    num_epochs = 10
+    num_epochs = 40
     train_accuracies, test_accuracies = [], []
 
     loss = nn.CrossEntropyLoss()
     adam = torch.optim.SGD(params=model.parameters(), lr=0.005)
 
-    patience = 20
+    patience = 5
     count = 0
     best_model = model
     best_accuracy = 0
