@@ -19,8 +19,7 @@ if __name__ == '__main__':
     transform = transforms.Compose([
         transforms.Resize((128, 128)),
         transforms.RandomVerticalFlip(p=0.3),
-        transforms.ColorJitter(brightness=0.25, contrast=0.2, saturation=0.2, hue=0.01),
-        transforms.GaussianBlur(kernel_size=3),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.01),
         transforms.ToTensor()])
     dataset = datasets.ImageFolder(root='/content/drive/My Drive/Dataset', transform=transform)
 
@@ -43,30 +42,18 @@ if __name__ == '__main__':
         nn.ReLU(),
         nn.MaxPool2d(2),
         nn.Dropout(p=0.1),
-        nn.Conv2d(64, 128, 3, padding='valid'),
-        nn.BatchNorm2d(128),
-        nn.ReLU(),
-        nn.MaxPool2d(2),
-        nn.Dropout(p=0.2),
-        nn.Conv2d(128, 256, 3, padding='valid'),
-        nn.BatchNorm2d(256),
-        nn.ReLU(),
-        nn.MaxPool2d(2, stride=2),
-        nn.Dropout(p=0.2),
         nn.Flatten(),
-        nn.Linear(in_features= 9216, out_features=4608),
-        nn.ReLU(),
-        nn.Linear(in_features= 4608, out_features=1),
-        nn.Sigmoid())
+        nn.Linear(in_features= 57600, out_features=2),
+        nn.Softmax())
 
     model = model.to(device)
     print(model)
 
-    num_epochs = 200
+    num_epochs = 10
     train_accuracies, test_accuracies = [], []
 
-    loss = nn.BCELoss()
-    adam = torch.optim.Adam(params=model.parameters(), lr=0.005)
+    loss = nn.CrossEntropyLoss()
+    adam = torch.optim.SGD(params=model.parameters(), lr=0.005)
 
     patience = 20
     count = 0
@@ -77,36 +64,43 @@ if __name__ == '__main__':
         # Train set
         batch = 0
         for X, y in train_loader:
-          adam.zero_grad()
-          X, y = X.to(device='cuda'), y.to(device='cuda')
-          y = y.float()
-          preds = model(X)
-          pred_labels = (preds > 0.5).float() 
-          loss_ = loss(preds, y.unsqueeze(1)) 
-          print('Batch: ', batch, ' Loss: ', loss_)
-          loss_.backward()
-          adam.step()
-          batch += 1
-          train_accuracies.append(100 * torch.mean((pred_labels == y).float()).item())
+            adam.zero_grad()
+            X, y = X.to(device=device), y.to(device=device)
+            X, y = X.to(device='cuda'), y.to(device='cuda')
+            y = torch.squeeze(y)
+            preds = model(X)
+            pred_labels = torch.argmax(preds, axis=1)
+            loss_ = loss(preds, y.long())
+            print('Batch: ', batch, ' Loss: ', loss_)
+            loss_.backward()
+            adam.step()
+            batch += 1
+        train_accuracies.append(100 * torch.mean((pred_labels == y).float()).item())
 
-        # Test set
-        X, y = next(iter(test_loader))
-        X, y = X.to(device='cuda'), y.to(device='cuda')
-        test_preds = torch.argmax(model(X), axis=1)
-        test_preds = test_preds.cpu().numpy() 
-        test_accuracy = 100 * torch.mean((pred_labels == y).float()).item()
-        test_accuracies.append(test_accuracy)
-        print('epoch: ', epoch, ' Accuracy: ', test_accuracy)
+        with torch.no_grad():
+          correct = 0
+          total = 0
+          for images, labels in test_loader:
+              images = images.to(device)
+              labels = labels.to(device)
+              outputs = model(images)
+              _, predicted = torch.max(outputs.data, 1)
+              total += labels.size(0)
+              correct += (predicted == labels).sum().item()
+          
+          accuracy = 100 * correct / total
+          print(f'Accuracy after epoch {epoch + 1}: {accuracy:.2f}%')
 
-        if test_accuracy > best_accuracy:
+        if accuracy > best_accuracy:
             best_model = model.state_dict()
-            best_accuracy = test_accuracy
+            best_accuracy = accuracy
         else:
             count += 1
             if count >= patience:
                 print('Early stopping...')
                 break
 
-    print('Best Accuracy: ', best_accuracy)
+    print('Best Accuracy: ', accuracy)
     torch.save(best_model, '/content/drive/My Drive/Sciezka/Do/Folderu/Image_Model_Torch')
+
 
